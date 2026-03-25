@@ -1,0 +1,10 @@
+^C:\USERS\ROMAIN\DOWNLOADS\DEEP_LEARNING\CMAKELISTS.TXT
+setlocal
+C:\Users\Romain\AppData\Local\Programs\Python\Python312\Lib\site-packages\cmake\data\bin\cmake.exe -SC:/Users/Romain/Downloads/deep_learning -BC:/Users/Romain/Downloads/deep_learning/build --check-stamp-file C:/Users/Romain/Downloads/deep_learning/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
