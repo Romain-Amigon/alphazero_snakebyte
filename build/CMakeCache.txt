@@ -353,6 +353,8 @@ _Python_INCLUDE_DIR:INTERNAL=C:/Users/Romain/anaconda3/Include
 //Python Properties
 _Python_INTERPRETER_PROPERTIES:INTERNAL=Python;3;12;7;64;<none>;cp312-win_amd64;;C:/Users/Romain/anaconda3/Lib;C:/Users/Romain/anaconda3/Lib;C:/Users/Romain/anaconda3/Lib/site-packages;C:/Users/Romain/anaconda3/Lib/site-packages
 _Python_INTERPRETER_SIGNATURE:INTERNAL=7ab46930521d69d531cacaa9fb337084
+//Interpreter reason failure
+_Python_Interpreter_REASON_FAILURE:INTERNAL=
 //Path to a library.
 _Python_LIBRARY_DEBUG:INTERNAL=_Python_LIBRARY_DEBUG-NOTFOUND
 //Path to a library.

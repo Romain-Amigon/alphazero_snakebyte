@@ -1,19 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\back\src\bindings.cpp">
+    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\game\src\bindings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\back\src\Game.cpp">
+    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\game\src\Game.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\back\src\Grid.cpp">
+    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\game\src\Grid.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\back\src\Coord.cpp">
+    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\game\src\Coord.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\back\src\Utils.cpp">
+    <ClCompile Include="C:\Users\Romain\Downloads\deep_learning\game\src\Utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
