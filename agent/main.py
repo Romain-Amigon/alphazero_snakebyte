@@ -8,7 +8,7 @@ Created on Wed Mar 25 00:28:50 2026
 import sys
 import os
 import pygame
-import agent
+import alphazero as agent
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 build_dir = os.path.join(current_dir, "..", "build", "Release")
