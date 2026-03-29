@@ -72,9 +72,9 @@ def train_alphazero():
     criterion_value = nn.MSELoss()
     log_softmax = nn.LogSoftmax(dim=1)
 
-    epochs = 50
-    games_per_epoch = 10
-    mcts_sims = 25
+    epochs = 20
+    games_per_epoch = 20
+    mcts_sims = 50
     batch_size = 64
     memory = deque(maxlen=10000)
     dirs = ["UP", "DOWN", "LEFT", "RIGHT"]
