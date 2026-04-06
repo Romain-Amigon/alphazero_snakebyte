@@ -3,8 +3,11 @@ import torch
 import random
 import numpy as np
 from itertools import product
+import snake_engine
 
 DIRS = ["UP", "DOWN", "LEFT", "RIGHT"]
+OPPOSITES = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
+DIR_VECS = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 
 class Node:
     def __init__(self, prior):
@@ -21,13 +24,44 @@ class Node:
             return 0
         return self.value_sum / self.visit_count
 
-def get_joint_actions(bots):
+def get_joint_actions(bots, state):
     bot_ids = list(bots.keys())
-    all_combinations = product(DIRS, repeat=len(bot_ids))
+    valid_dirs = []
+    
+    for bot_id in bot_ids:
+        bot = bots[bot_id]
+        opp = OPPOSITES.get(bot.last_move, "")
+        possible = []
+        head = bot.body[0]
+        
+        for d in DIRS:
+            if d == opp:
+                continue
+            
+            nx = head.x + DIR_VECS[d][0]
+            ny = head.y + DIR_VECS[d][1]
+            
+            if 0 <= nx < state.width and 0 <= ny < state.height:
+                tile = state.grid.get(nx, ny)
+                if tile.getType() == snake_engine.TileType.TYPE_WALL:
+                    continue
+            else:
+                continue
+                
+            possible.append(d)
+            
+        if not possible:
+            possible = [DIRS[0]]
+            
+        valid_dirs.append(possible)
+        
+    all_combinations = product(*valid_dirs)
     joint_actions = []
+    
     for combo in all_combinations:
         action_dict = {bot_ids[i]: combo[i] for i in range(len(bot_ids))}
         joint_actions.append(action_dict)
+        
     return joint_actions
 
 def puct_score(child, parent_visit_count, c_puct=1.0):
@@ -64,8 +98,10 @@ def run_mcts(state, net, num_simulations, is_player_1=True):
             
             opp_action_dict = {}
             opp_bots = sim_state.bots2 if is_player_1 else sim_state.bots1
-            for opp_id in opp_bots.keys():
-                opp_action_dict[opp_id] = random.choice(DIRS)
+            for opp_id, opp_bot in opp_bots.items():
+                opp_opp = OPPOSITES.get(opp_bot.last_move, "")
+                opp_possible = [d for d in DIRS if d != opp_opp]
+                opp_action_dict[opp_id] = random.choice(opp_possible) if opp_possible else DIRS[0]
 
             if is_player_1:
                 sim_state.step(my_action_dict, opp_action_dict)
@@ -95,7 +131,7 @@ def run_mcts(state, net, num_simulations, is_player_1=True):
             dir_probs = {DIRS[i]: probs[i] for i in range(4)}
             
             my_bots = sim_state.bots1 if is_player_1 else sim_state.bots2
-            joint_actions = get_joint_actions(my_bots)
+            joint_actions = get_joint_actions(my_bots, sim_state)
             
             action_priors = []
             for ja in joint_actions:
