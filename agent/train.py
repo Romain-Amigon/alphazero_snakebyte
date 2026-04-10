@@ -28,10 +28,12 @@ def state_to_tensor(state):
                 tensor[1][y][x] = 1.0
     for bot_id, bot in state.bots1.items():
         for part in bot.body:
-            tensor[2][part.y][part.x] = 1.0
+            if 0 <= part.x < state.width and 0 <= part.y < state.height:
+                tensor[2][part.y][part.x] = 1.0
     for bot_id, bot in state.bots2.items():
         for part in bot.body:
-            tensor[3][part.y][part.x] = 1.0
+            if 0 <= part.x < state.width and 0 <= part.y < state.height:
+                tensor[3][part.y][part.x] = 1.0
     return torch.tensor(tensor).unsqueeze(0).to(device)
 
 class AlphaZeroNet(nn.Module):
@@ -68,15 +70,18 @@ def train_alphazero():
     print(f"Execution sur : {device}")
     
     net = AlphaZeroNet(channels=4).to(device)
+    #checkpoint = torch.load("models/alphazero_snake.pth", map_location=device)
+    #net.load_state_dict(checkpoint)
+    #print("Poids chargés avec succès !")
     optimizer = optim.Adam(net.parameters(), lr=0.0005)
     criterion_value = nn.MSELoss()
     log_softmax = nn.LogSoftmax(dim=1)
 
-    epochs = 20
-    games_per_epoch = 20
-    mcts_sims = 50
+    epochs = 100
+    games_per_epoch = 100
+    mcts_sims = 25
     batch_size = 64
-    memory = deque(maxlen=10000)
+    memory = deque(maxlen=100000)
     dirs = ["UP", "DOWN", "LEFT", "RIGHT"]
 
     for epoch in range(epochs):
@@ -90,7 +95,7 @@ def train_alphazero():
             game_history = []
             tour = 0
 
-            while len(state.bots1) > 0 and len(state.bots2) > 0 and tour < 200:
+            while len(state.bots1) > 0 and len(state.bots2) > 0 and tour < 200 and len(state.grid.apples)>0:
                 tensor_state = state_to_tensor(state)
                 
                 my_actions, my_visits = run_mcts(state, net, mcts_sims, True)
@@ -109,7 +114,7 @@ def train_alphazero():
                 game_history.append((tensor_state, pi))
                 state.step(my_actions, opp_actions)
                 tour += 1
-
+   
             score1 = sum(len(bot.body) for bot in state.bots1.values())
             score2 = sum(len(bot.body) for bot in state.bots2.values())
 
@@ -118,11 +123,10 @@ def train_alphazero():
                 reward = 1.0
             elif len(state.bots2) > 0 and len(state.bots1) == 0:
                 reward = -1.0
-            else:
-                if score1 > score2:
-                    reward = 0.5
-                elif score2 > score1:
-                    reward = -0.5
+            elif (score1+score2) !=0:
+                reward = (score1-score2)/(score1+score2)
+            else : reward =0
+
 
             for hist_state, pi in game_history:
                 memory.append((hist_state, pi, reward))
@@ -167,7 +171,7 @@ def train_alphazero():
         print(f"  Loss: {total_loss/len(batches) if batches else 0:.4f}")
 
     os.makedirs("models", exist_ok=True)
-    save_path = os.path.join("models", "alphazero_snake.pth")
+    save_path = os.path.join("models", "alphazero_snake2.pth")
     torch.save(net.state_dict(), save_path)
     print(f"\nModele sauvegarde avec succes dans : {save_path}")
 
