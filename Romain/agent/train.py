@@ -17,21 +17,40 @@ from mcts import run_mcts
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def state_to_tensor(state):
+current_game_walls = None
+
+def state_to_tensor(state, is_new_game=False):
+    global current_game_walls
     tensor = np.zeros((4, state.height, state.width), dtype=np.float32)
-    for y in range(state.height):
-        for x in range(state.width):
-            if state.grid.get(x, y).getType() == snake_engine.TileType.TYPE_WALL:
-                tensor[0][y][x] = 1.0
-            coord = snake_engine.Coord(x, y)
-            if coord in state.grid.apples:
-                tensor[1][y][x] = 1.0
+    
+    if is_new_game or current_game_walls is None or current_game_walls.shape != (state.height, state.width):
+        current_game_walls = np.zeros((state.height, state.width), dtype=np.float32)
+        for y in range(state.height):
+            for x in range(state.width):
+                if state.grid.get(x, y).getType() == snake_engine.TileType.TYPE_WALL:
+                    current_game_walls[y][x] = 1.0
+                    
+    tensor[0] = current_game_walls
+    
+    try:
+        for app in state.grid.apples:
+            tensor[1][app.y][app.x] = 1.0
+    except TypeError:
+        for y in range(state.height):
+            for x in range(state.width):
+                coord = snake_engine.Coord(x, y)
+                if coord in state.grid.apples:
+                    tensor[1][y][x] = 1.0
+
     for bot_id, bot in state.bots1.items():
         for part in bot.body:
-            tensor[2][part.y][part.x] = 1.0
+            if 0 <= part.x < state.width and 0 <= part.y < state.height:
+                tensor[2][part.y][part.x] = 1.0
     for bot_id, bot in state.bots2.items():
         for part in bot.body:
-            tensor[3][part.y][part.x] = 1.0
+            if 0 <= part.x < state.width and 0 <= part.y < state.height:
+                tensor[3][part.y][part.x] = 1.0
+                
     return torch.tensor(tensor).unsqueeze(0).to(device)
 
 class AlphaZeroNet(nn.Module):
@@ -72,11 +91,11 @@ def train_alphazero():
     criterion_value = nn.MSELoss()
     log_softmax = nn.LogSoftmax(dim=1)
 
-    epochs = 20
-    games_per_epoch = 20
-    mcts_sims = 50
+    epochs = 200
+    games_per_epoch = 100
+    mcts_sims = 25
     batch_size = 64
-    memory = deque(maxlen=10000)
+    memory = deque(maxlen=100000)
     dirs = ["UP", "DOWN", "LEFT", "RIGHT"]
 
     for epoch in range(epochs):
@@ -90,17 +109,16 @@ def train_alphazero():
             game_history = []
             tour = 0
 
-            while len(state.bots1) > 0 and len(state.bots2) > 0 and tour < 200:
-                tensor_state = state_to_tensor(state)
+            while len(state.bots1) > 0 and len(state.bots2) > 0 and tour < 200 and len(state.grid.apples)>0:
+                tensor_state = state_to_tensor(state, is_new_game=(tour == 0))
                 
-                my_actions, my_visits = run_mcts(state, net, mcts_sims, True)
-                opp_actions, opp_visits = run_mcts(state, net, mcts_sims, False)
+                my_actions, my_visits = run_mcts(state, net, mcts_sims, True, temperature=1.0, add_noise=True)
+                opp_actions, opp_visits = run_mcts(state, net, mcts_sims, False, temperature=1.0, add_noise=True)
 
                 pi = np.zeros(4, dtype=np.float32)
-                total_visits = sum(my_visits.values())
+                total_visits = sum(count for ja, count in my_visits)
                 if total_visits > 0:
-                    for act_str, count in my_visits.items():
-                        act_dict = eval(act_str)
+                    for act_dict, count in my_visits:
                         for bot_id, d in act_dict.items():
                             pi[dirs.index(d)] += count
                     if np.sum(pi) > 0:
@@ -109,7 +127,7 @@ def train_alphazero():
                 game_history.append((tensor_state, pi))
                 state.step(my_actions, opp_actions)
                 tour += 1
-
+   
             score1 = sum(len(bot.body) for bot in state.bots1.values())
             score2 = sum(len(bot.body) for bot in state.bots2.values())
 
@@ -118,14 +136,17 @@ def train_alphazero():
                 reward = 1.0
             elif len(state.bots2) > 0 and len(state.bots1) == 0:
                 reward = -1.0
+            elif (score1 + score2) != 0:
+                reward = 1.5 * (score1 - score2) / (score1 + score2)
+                reward = max(-1.0, min(1.0, reward))
             else:
-                if score1 > score2:
-                    reward = 0.5
-                elif score2 > score1:
-                    reward = -0.5
+                reward = 0.0
 
-            for hist_state, pi in game_history:
-                memory.append((hist_state, pi, reward))
+            discount_factor = 0.95
+            
+            for i, (hist_state, pi) in enumerate(reversed(game_history)):
+                discounted_reward = reward * (discount_factor ** i)
+                memory.append((hist_state, pi, discounted_reward))
         
         print()
 
@@ -167,7 +188,7 @@ def train_alphazero():
         print(f"  Loss: {total_loss/len(batches) if batches else 0:.4f}")
 
     os.makedirs("models", exist_ok=True)
-    save_path = os.path.join("models", "alphazero_snake.pth")
+    save_path = os.path.join("models", "alphazero_snake6.pth")
     torch.save(net.state_dict(), save_path)
     print(f"\nModele sauvegarde avec succes dans : {save_path}")
 

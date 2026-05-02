@@ -72,20 +72,20 @@ def select_child(node):
     best_score = -float('inf')
     best_action = None
     best_child = None
-    for action_str, child in node.children.items():
+    for action_key, (ja, child) in node.children.items():
         score = puct_score(child, node.visit_count)
         if score > best_score:
             best_score = score
-            best_action = action_str
+            best_action = ja
             best_child = child
     return best_action, best_child
 
-def run_mcts(state, net, num_simulations, is_player_1=True):
+def run_mcts(state, net, num_simulations, is_player_1=True, temperature=1.0, add_noise=False):
     root = Node(1.0)
     
     my_bots_init = state.bots1 if is_player_1 else state.bots2
     if len(my_bots_init) == 0:
-        return {}, {}
+        return {}, []
         
     for _ in range(num_simulations):
         node = root
@@ -93,8 +93,7 @@ def run_mcts(state, net, num_simulations, is_player_1=True):
         search_path = [node]
 
         while node.expanded():
-            action_str, node = select_child(node)
-            my_action_dict = eval(action_str)
+            my_action_dict, node = select_child(node)
             
             opp_action_dict = {}
             opp_bots = sim_state.bots2 if is_player_1 else sim_state.bots1
@@ -147,24 +146,34 @@ def run_mcts(state, net, num_simulations, is_player_1=True):
                 action_priors = [1.0 / len(joint_actions)] * len(joint_actions)
             
             for ja, p in zip(joint_actions, action_priors):
-                node.children[str(ja)] = Node(p)
+                action_key = tuple(sorted(ja.items()))
+                node.children[action_key] = (ja, Node(p))
+
+            if node == root and add_noise:
+                noise = np.random.dirichlet([0.3] * len(action_priors))
+                for i, (action_key, (ja, child)) in enumerate(node.children.items()):
+                    child.prior = 0.75 * child.prior + 0.25 * noise[i]
 
         for n in reversed(search_path):
             n.value_sum += value
             n.visit_count += 1
             value = -value
 
-    action_visits = {}
-    for action_str, child in root.children.items():
-        action_visits[action_str] = child.visit_count
+    action_visits = []
+    counts = []
+    for action_key, (ja, child) in root.children.items():
+        action_visits.append(ja)
+        counts.append(child.visit_count)
         
-    actions = list(action_visits.keys())
-    counts = list(action_visits.values())
-    
     if sum(counts) > 0:
-        probs = [c / sum(counts) for c in counts]
-        chosen_action_str = np.random.choice(actions, p=probs)
+        if temperature == 0:
+            chosen_action = action_visits[np.argmax(counts)]
+        else:
+            probs = [c / sum(counts) for c in counts]
+            idx = np.random.choice(len(action_visits), p=probs)
+            chosen_action = action_visits[idx]
     else:
-        chosen_action_str = random.choice(actions) if actions else "{}"
+        chosen_action = random.choice(action_visits) if action_visits else {}
         
-    return eval(chosen_action_str), action_visits
+    visits_out = [(ja, count) for ja, count in zip(action_visits, counts)]
+    return chosen_action, visits_out
