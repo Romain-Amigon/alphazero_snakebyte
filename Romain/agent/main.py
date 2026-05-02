@@ -3,6 +3,8 @@ import os
 import pygame
 import alphazero as agent
 
+#import ppo as agent
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 build_dir = os.path.join(current_dir, "..", "build", "Release")
 sys.path.append(build_dir)
@@ -105,7 +107,7 @@ def main(display=True):
                 screen.blit(end_text, (WIDTH - 120, HEIGHT + 10))
             
             pygame.display.flip()
-            clock.tick(10)
+            clock.tick(5)
     
     print(f"Partie terminée ! Survivants Joueur 1: {len(state.bots1)}, Survivants Joueur 2: {len(state.bots2)}")
     

@@ -18,7 +18,7 @@ from mcts import run_mcts
 from train import AlphaZeroNet, device
 
 net = AlphaZeroNet(channels=4).to(device)
-model_path = os.path.join("models", "alphazero_snake.pth")
+model_path = os.path.join("models", "alphazero_snake6.pth")
 
 if os.path.exists(model_path):
     net.load_state_dict(torch.load(model_path, map_location=device))
