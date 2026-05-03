@@ -144,15 +144,8 @@ L'état du jeu est encodé en tenseurs pour être consommé par les réseaux de 
 | 3 | Corps équipe 2 | Pommes |
 | 4 | | Alliés |
 
-Pour AlphaZero, l'intensité du gradient sur le canal équipe 1 permet au réseau de distinguer la tête du reste du corps. Pour PPO, un vecteur supplémentaire de 6 valeurs est concaténé : direction normalisée vers la pomme la plus proche et 4 flags d'obstacle adjacent.
+Pour AlphaZero, l'intensité du gradient sur le canal équipe 1 permet au réseau de distinguer la tête du reste du corps. Pour PPO, un vecteur supplémentaire de 6 valeurs est concaténé : direction normalisée vers la pomme la plus proche et 4 flags d'obstacle adjacent. (ps : il y a une petite erreur dans notre slide de vidéo)
 
-## 2 AlphaZero
-
-Voici la version intégralement corrigée de la partie de ton rapport. J'ai expurgé toutes les "hallucinations" de l'IA précédente, réintégré les vraies formules mathématiques et l'architecture exacte de ton code, et ajouté la section sur les résultats décevants mais attendus.
-
-Tu peux copier-coller ce texte directement !
-
----
 
 ### 2. AlphaZero appliqué au Snake
 
@@ -210,7 +203,7 @@ Ces limites étaient cependant attendues au regard de la complexité du problèm
 2.  **Architecture CNN trop légère :** Le réseau ne compte que deux couches convolutives et environ 800 000 paramètres. Pour appréhender des concepts spatiaux profonds (comme se représenter un "cul-de-sac" qui va se refermer dans 10 tours), une architecture nettement plus profonde (de type ResNet avec blocs résiduels) serait requise.
 3.  **La nature du jeu Snake :** Snake est un environnement à récompenses très retardées. Une action anodine (se diriger vers une pomme) peut entraîner la mort de l'agent 15 tours plus tard. Sans une capacité de prédiction profonde, le signal d'apprentissage généré par notre algorithme reste trop bruité pour permettre l'émergence d'une intelligence tactique supérieure.
 
----
+
 
 ## 3 Proximal Policy Optimization (PPO)
 
@@ -261,40 +254,15 @@ La récompense est dense et multi-composante, conçue pour guider l'apprentissag
 | Immobilité prolongée | -1.0 |
 Table 4 : Fonction de récompense de SnakePPOEnv
 
-La pénalité de boucle est calculée en détectant des positions de tête répétées sur une fenêtre récente, découragent les comportements circulaires stériles.
+La pénalité de boucle est calculée en détectant des positions de tête répétées sur une fenêtre récente, découragent les comportements circulaires stériles. Cette fonction de reward à évolué tout au long de l'entrainement afin d'avoir les résultats les plus probants possible.
 
-3.3 Extracteur de features : CustomMultiExtractor
-PPO doit traiter un espace d'observation hétérogène (image + vecteur). Un extracteur de features personnalisé est utilisé dans `agent/train_ppo.py` :
-```python
-class CustomMultiExtractor(BaseFeaturesExtractor):
-    def __init__(self, observation_space):
-        # CNN pour l'image
-        self.cnn = nn.Sequential(
-            nn.Conv2d(5, 32, 8, stride=4),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, 4, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, 3, stride=1),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-        # MLP pour le vecteur
-        self.vector_net = nn.Sequential(
-            nn.Linear(6, 64),
-            nn.ReLU(),
-        )
-        # Fusion
-        self.combined = nn.Linear(cnn_out + 64, 512)
-```
-Listing 5 : Architecture de l'extracteur de features
 
-Les deux branches sont concaténées et projetées dans un espace de 512 dimensions, qui alimente ensuite les têtes politique et valeur de SB3.
 
-3.4 Pipeline d'entraînement
-3.4.1 Parallélisme
+3.3 Pipeline d'entraînement
+3.3.1 Parallélisme
 16 environnements parallèles sont créés via `SubprocVecEnv` pour accélérer la collecte d'expériences.
 
-3.4.2 Hyperparamètres
+3.3.2 Hyperparamètres
 | Paramètre | Valeur |
 |---|---|
 | Environnements parallèles | 16 |
@@ -307,20 +275,7 @@ Les deux branches sont concaténées et projetées dans un espace de 512 dimensi
 | Clip PPO | 0.2 |
 Table 5 : Hyperparamètres PPO
 
-3.4.3 Reprise automatique de l'entraînement
-Le script détecte automatiquement le checkpoint le plus récent dans `agent/models_v2/` et reprend l'entraînement à partir de celui-ci, permettant des sessions d'entraînement incrémentales sans perte de progression.
-```python
-checkpoints = sorted(glob("models_v2/ppo_snake_*.zip"),
-                     key=lambda f: int(re.search(r'(\d+)_steps', f).group(1)))
-if checkpoints:
-    model = PPO.load(checkpoints[-1], env=env, ...)
-```
-Listing 6 : Reprise automatique depuis le dernier checkpoint
 
-3.4.4 Callbacks
-Deux callbacks SB3 sont utilisés :
-*   `CheckpointCallback` : sauvegarde un checkpoint toutes les 50000 étapes dans `agent/models_v2/`.
-*   `EvalCallback` : évalue le modèle périodiquement et conserve le meilleur modèle dans `agent/models_v2/best_model.zip`.
 Les métriques d'entraînement sont journalisées dans Tensor Board sous `agent/ppo_snake_tensorboard`.
 
 3.5 Comparaison AlphaZero vs PPO
