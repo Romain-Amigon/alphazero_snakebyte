@@ -2,6 +2,8 @@
 
 **AMIGON Romain et Bardin Clément**
 
+LIEN PRESENTATION : https://drive.google.com/file/d/1h5p5DqkJt58LIwY4CYIzXGJJyXFBbUUw/view?usp=sharing
+
 Mai 2026
 
 AlphaZero & PPO appliqués au Snake
